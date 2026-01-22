@@ -6,7 +6,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(
-        features = "src/test/resources/askomdch/features",
+        features = "src/test/resources/askomdch/features/login/Login.feature",
         glue = {"askomdch.stepdefinitions",
                 "askomdch.hooks",
                 "askomdch.dependencyinjection",
@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
                 "askomdch.domainobject",
                 "askomdch.utils"
                 },
-        plugin = "pretty",
-        tags = "@addToCart or @checkout and not @login and not @navigation and not @filterProductsByCategory and not @filterProductsByPriceRange and not @register"
+        plugin = {"pretty","json:target/reports/cucumber-report.xml"}
+//        tags = "@addToCart or @checkout and not @login and not @navigation and not @filterProductsByCategory and not @filterProductsByPriceRange and not @register"
 )
 public class TestRunner {
 
