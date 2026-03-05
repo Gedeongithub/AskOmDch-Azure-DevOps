@@ -15,6 +15,7 @@ pool:
 variables:
   mavenPomFile: 'pom.xml'
   artifactName: 'askomdch-artifact'
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
 
 stages:
 
@@ -31,27 +32,56 @@ stages:
 
     steps:
 
+    # Install Java
+    - task: JavaToolInstaller@0
+      displayName: "Install Java 17"
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+
+    # Cache Maven dependencies (Speeds up builds)
+    - task: Cache@2
+      displayName: "Cache Maven Dependencies"
+      inputs:
+        key: 'maven | "$(Agent.OS)" | pom.xml'
+        restoreKeys: |
+          maven | "$(Agent.OS)"
+        path: $(MAVEN_CACHE_FOLDER)
+
+    # Run Maven Tests
     - task: Maven@3
-      displayName: "Run Maven Tests"
+      displayName: "Run Maven Verify"
       inputs:
         mavenPomFile: '$(mavenPomFile)'
-        goals: 'clean test'
-        options: '-X'
+        goals: 'clean verify'
+        options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
 
+    # Print test failure logs if tests fail
+    - script: |
+        echo "Printing Surefire Reports..."
+        find . -type f -path "*surefire-reports*" -name "*.txt" -exec cat {} \;
+      displayName: "Print Test Reports"
+      condition: failed()
+
+    # Package the application
     - task: Maven@3
       displayName: "Package Application"
       inputs:
         mavenPomFile: '$(mavenPomFile)'
         goals: 'package'
+        options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
 
+    # Publish artifacts
     - task: PublishBuildArtifacts@1
       displayName: "Publish Build Artifact"
       inputs:
         PathtoPublish: 'target'
         ArtifactName: $(artifactName)
         publishLocation: 'Container'
+
 
 # ======================
 # DEPLOYMENT - DEV
@@ -75,8 +105,10 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Development environment"
+              echo "Deploying to Development Environment"
+              ls -R
             displayName: "Deploy Dev"
+
 
 # ======================
 # DEPLOYMENT - TEST
@@ -100,8 +132,10 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Testing environment"
+              echo "Deploying to Testing Environment"
+              ls -R
             displayName: "Deploy Test"
+
 
 # ======================
 # DEPLOYMENT - PROD
@@ -125,5 +159,6 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Production environment"
+              echo "Deploying to Production Environment"
+              ls -R
             displayName: "Deploy Production"
