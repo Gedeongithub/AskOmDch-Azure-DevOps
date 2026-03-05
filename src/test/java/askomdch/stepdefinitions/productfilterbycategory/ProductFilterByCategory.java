@@ -18,17 +18,17 @@ public class ProductFilterByCategory {
 
 
     @Given("I am on the store page")
-    public void i_am_on_the_store_page() {
+    public void iAmOnTheStorePage() {
         websiteStateManager.loadPage(EndPoint.STORE.url);
     }
 
     @When("I select category {string}")
-    public void i_select_category(String category) {
+    public void iSelectCategory(String category) {
         storePage.chooseOptionFromDropDown(category);
     }
 
     @Then("I should see {string} in the url")
-    public void i_should_see_in_the_url(String expected) {
+    public void iShouldSeeInTheUrl(String expected) {
         Assert.assertTrue(storePage.checkResults(expected));
 
     }

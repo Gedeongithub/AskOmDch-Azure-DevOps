@@ -14,7 +14,7 @@ import org.junit.runner.RunWith;
                 "askomdch.domainobject",
                 "askomdch.utils"
                 },
-        plugin = {"pretty","json:target/reports/cucumber-report.xml"}
+        plugin = {"pretty","html:target/reports/cucumber-report.html"}
 //        tags = "@addToCart or @checkout and not @login and not @navigation and not @filterProductsByCategory and not @filterProductsByPriceRange and not @register"
 )
 public class TestRunner {
