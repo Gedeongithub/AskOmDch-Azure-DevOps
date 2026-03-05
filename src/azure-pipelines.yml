@@ -6,66 +6,66 @@ trigger:
 pr:
   branches:
     include:
-      - dev
       - main
+      - dev
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  nodeVersion: '18.x'
-  artifactName: 'askomdch-build'
+  mavenPomFile: 'pom.xml'
+  artifactName: 'askomdch-artifact'
 
 stages:
 
-# ========================
-# CI STAGE - BUILD & TEST
-# ========================
+# ======================
+# CI STAGE
+# ======================
 
-- stage: Build
-  displayName: "Build and Test"
+- stage: Build_Test
+  displayName: "Build and Run Tests"
+
   jobs:
+  - job: MavenBuild
+    displayName: "Run Maven Build"
 
-  - job: BuildJob
-    displayName: "Install, Test, and Build"
     steps:
 
-    - task: NodeTool@0
+    - task: Maven@3
+      displayName: "Run Maven Tests"
       inputs:
-        versionSpec: $(nodeVersion)
-      displayName: "Install Node.js"
+        mavenPomFile: '$(mavenPomFile)'
+        goals: 'clean test'
+        options: '-X'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
 
-    - script: |
-        npm install
-      displayName: "Install Dependencies"
-
-    - script: |
-        npm test
-      displayName: "Run Tests"
-
-    - script: |
-        npm run build
-      displayName: "Build Application"
+    - task: Maven@3
+      displayName: "Package Application"
+      inputs:
+        mavenPomFile: '$(mavenPomFile)'
+        goals: 'package'
 
     - task: PublishBuildArtifacts@1
+      displayName: "Publish Build Artifact"
       inputs:
-        PathtoPublish: 'dist'
+        PathtoPublish: 'target'
         ArtifactName: $(artifactName)
         publishLocation: 'Container'
-      displayName: "Publish Build Artifacts"
 
-# ========================
-# CD STAGE - DEVELOPMENT
-# ========================
+# ======================
+# DEPLOYMENT - DEV
+# ======================
 
 - stage: Development
   displayName: "Deploy to Development"
-  dependsOn: Build
+  dependsOn: Build_Test
   condition: succeeded()
 
   jobs:
   - deployment: DeployDev
     environment: Development
+
     strategy:
       runOnce:
         deploy:
@@ -75,12 +75,12 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Development Environment"
-            displayName: "Deploy to Dev"
+              echo "Deploying to Development environment"
+            displayName: "Deploy Dev"
 
-# ========================
-# CD STAGE - TESTING
-# ========================
+# ======================
+# DEPLOYMENT - TEST
+# ======================
 
 - stage: Testing
   displayName: "Deploy to Testing"
@@ -90,6 +90,7 @@ stages:
   jobs:
   - deployment: DeployTest
     environment: Testing
+
     strategy:
       runOnce:
         deploy:
@@ -99,12 +100,12 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Testing Environment"
-            displayName: "Deploy to Test"
+              echo "Deploying to Testing environment"
+            displayName: "Deploy Test"
 
-# ========================
-# CD STAGE - PRODUCTION
-# ========================
+# ======================
+# DEPLOYMENT - PROD
+# ======================
 
 - stage: Production
   displayName: "Deploy to Production"
@@ -114,6 +115,7 @@ stages:
   jobs:
   - deployment: DeployProd
     environment: Production
+
     strategy:
       runOnce:
         deploy:
@@ -123,5 +125,5 @@ stages:
             artifact: $(artifactName)
 
           - script: |
-              echo "Deploying to Production Environment"
-            displayName: "Deploy to Production"
+              echo "Deploying to Production environment"
+            displayName: "Deploy Production"
