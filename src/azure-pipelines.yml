@@ -1,0 +1,127 @@
+trigger:
+  branches:
+    include:
+      - dev
+
+pr:
+  branches:
+    include:
+      - dev
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '18.x'
+  artifactName: 'askomdch-build'
+
+stages:
+
+# ========================
+# CI STAGE - BUILD & TEST
+# ========================
+
+- stage: Build
+  displayName: "Build and Test"
+  jobs:
+
+  - job: BuildJob
+    displayName: "Install, Test, and Build"
+    steps:
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: $(nodeVersion)
+      displayName: "Install Node.js"
+
+    - script: |
+        npm install
+      displayName: "Install Dependencies"
+
+    - script: |
+        npm test
+      displayName: "Run Tests"
+
+    - script: |
+        npm run build
+      displayName: "Build Application"
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: $(artifactName)
+        publishLocation: 'Container'
+      displayName: "Publish Build Artifacts"
+
+# ========================
+# CD STAGE - DEVELOPMENT
+# ========================
+
+- stage: Development
+  displayName: "Deploy to Development"
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployDev
+    environment: Development
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: $(artifactName)
+
+          - script: |
+              echo "Deploying to Development Environment"
+            displayName: "Deploy to Dev"
+
+# ========================
+# CD STAGE - TESTING
+# ========================
+
+- stage: Testing
+  displayName: "Deploy to Testing"
+  dependsOn: Development
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployTest
+    environment: Testing
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: $(artifactName)
+
+          - script: |
+              echo "Deploying to Testing Environment"
+            displayName: "Deploy to Test"
+
+# ========================
+# CD STAGE - PRODUCTION
+# ========================
+
+- stage: Production
+  displayName: "Deploy to Production"
+  dependsOn: Testing
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployProd
+    environment: Production
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: $(artifactName)
+
+          - script: |
+              echo "Deploying to Production Environment"
+            displayName: "Deploy to Production"
